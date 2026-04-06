@@ -79,13 +79,20 @@ This is where you define **what tools exist** and **which model to use**.
 
 ```
 react.py
-  ├── @tool triple()      ← custom Python function exposed as a tool
-  ├── TavilySearch        ← pre-built web search tool
-  ├── tools = [...]       ← registry passed to both LLM and ToolNode
-  └── llm = ChatOllama(...).bind_tools(tools)
+  ├── @tool triple()          ← custom Python function exposed as a tool
+  ├── TavilySearch            ← pre-built web search tool
+  ├── tools = [...]           ← registry passed to both LLM and ToolNode
+  ├── USE_HUGGINGFACE = True  ← switch between HF and Ollama backends
+  └── llm = ChatHuggingFace(...).bind_tools(tools)   ← or ChatOllama
 ```
 
 Key insight: `.bind_tools(tools)` sends the tool schemas to the model on every call so it always knows what functions are available.
+
+**Switching backends** — edit one line in [react.py](react.py):
+```python
+USE_HUGGINGFACE = True   # HuggingFace free API
+USE_HUGGINGFACE = False  # local Ollama
+```
 
 ---
 
@@ -179,11 +186,32 @@ TAVILY_API_KEY=your_tavily_api_key_here
 LANGSMITH_API_KEY=your_langsmith_api_key_here
 LANGSMITH_TRACING=true
 LANGSMITH_PROJECT="personal"
+
+# Required only if USE_HUGGINGFACE = True in react.py
+HUGGINGFACEHUB_API_TOKEN=your_hf_token_here
 ```
 
-Get a free Tavily key at [tavily.com](https://tavily.com).
+| Key | Where to get it |
+|-----|----------------|
+| `TAVILY_API_KEY` | [tavily.com](https://tavily.com) — free tier available |
+| `LANGSMITH_API_KEY` | [smith.langchain.com](https://smith.langchain.com) — free |
+| `HUGGINGFACEHUB_API_TOKEN` | huggingface.co/settings/tokens — free, read access |
 
-### 4. Verify Ollama is reachable
+### 4. Choose your LLM backend
+
+Edit the flag at the top of [react.py](react.py):
+
+```python
+USE_HUGGINGFACE = True   # → HuggingFace free Serverless API (Qwen2.5-7B-Instruct)
+USE_HUGGINGFACE = False  # → local Ollama at 192.168.10.114:11434 (qwen3:8b)
+```
+
+| Backend | Pros | Cons |
+|---------|------|------|
+| HuggingFace | No local GPU, free, no server needed | Rate limited, needs internet |
+| Ollama | Private, offline, no rate limits | Needs Ollama server running |
+
+**If using Ollama**, verify it is reachable first:
 
 ```bash
 curl http://192.168.10.114:11434/api/tags

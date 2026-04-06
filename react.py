@@ -8,14 +8,26 @@
 # tool_call (function name + arguments) instead of plain text.
 # The graph (main.py) intercepts that call, runs the real function,
 # and feeds the result back to the model for its final answer.
+#
+# LLM BACKEND OPTIONS (set USE_HUGGINGFACE below):
+#   False → Local Ollama (no API key, needs Ollama server running)
+#   True  → HuggingFace Serverless Inference API (free, needs HF token)
 # ============================================================
 
 from dotenv import load_dotenv
 from langchain_core.tools import tool      # decorator that turns a Python fn into a LangChain tool
-from langchain_ollama import ChatOllama    # Ollama LLM adapter for LangChain
 from langchain_tavily import TavilySearch  # web-search tool backed by Tavily API
 
-load_dotenv()  # read TAVILY_API_KEY and LANGSMITH_* from .env
+load_dotenv()  # read TAVILY_API_KEY, HUGGINGFACEHUB_API_TOKEN, LANGSMITH_* from .env
+
+
+# ------------------------------------------------------------
+# Backend Switch
+# ------------------------------------------------------------
+# Set to True  → use HuggingFace free Serverless Inference API
+# Set to False → use local Ollama server
+# ------------------------------------------------------------
+USE_HUGGINGFACE = True
 
 
 # ------------------------------------------------------------
@@ -60,20 +72,55 @@ tools = [tavily_tool, triple]
 
 
 # ------------------------------------------------------------
-# LLM Setup — Ollama (local, no API key needed)
+# LLM Setup
 # ------------------------------------------------------------
-# ChatOllama connects to a locally running Ollama server.
-# - model:       which model to use (qwen3:8b is fast & capable)
-# - base_url:    address of the Ollama server on your network
-# - temperature: 0 = deterministic output (best for agents that
-#                must reason reliably, not creatively)
-#
-# .bind_tools(tools) attaches the tools list to the LLM so that
-# on every call the model is aware of available functions and
-# can emit tool_call objects in its response.
-# ------------------------------------------------------------
-llm = ChatOllama(
-    model="qwen3:8b",
-    base_url="http://192.168.10.114:11434",
-    temperature=0,
-).bind_tools(tools)
+if USE_HUGGINGFACE:
+    # ----------------------------------------------------------
+    # Option A — HuggingFace Serverless Inference API (FREE)
+    # ----------------------------------------------------------
+    # THEORY: HuggingFace hosts thousands of open-source models
+    # and provides a free Serverless Inference API (rate-limited).
+    # You only need a free HF account and an API token.
+    #
+    # Requirements:
+    #   - Free account at huggingface.co
+    #   - Token at huggingface.co/settings/tokens (read access)
+    #   - HUGGINGFACEHUB_API_TOKEN set in .env
+    #
+    # Model choice — must support tool/function calling:
+    #   "Qwen/Qwen2.5-7B-Instruct"         ← recommended (same family as local qwen3)
+    #   "mistralai/Mistral-7B-Instruct-v0.3" ← alternative
+    #
+    # Note: Free tier has rate limits (~requests per minute).
+    # For heavier use, upgrade to HF Pro or run locally via Ollama.
+    # ----------------------------------------------------------
+    from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+
+    endpoint = HuggingFaceEndpoint(
+        repo_id="Qwen/Qwen2.5-7B-Instruct",
+        task="text-generation",
+        max_new_tokens=1024,
+        temperature=0.01,   # HF endpoint doesn't accept exactly 0; use near-zero
+    )
+    llm = ChatHuggingFace(llm=endpoint).bind_tools(tools)
+
+else:
+    # ----------------------------------------------------------
+    # Option B — Local Ollama (no API key, fully private)
+    # ----------------------------------------------------------
+    # THEORY: Ollama runs open-source models locally on your machine
+    # or LAN. No data leaves your network. Ideal for privacy or
+    # offline development. Requires Ollama to be running and the
+    # model to be pulled beforehand.
+    #
+    # Requirements:
+    #   - Ollama server running at base_url
+    #   - Model pulled: `ollama pull qwen3:8b`
+    # ----------------------------------------------------------
+    from langchain_ollama import ChatOllama
+
+    llm = ChatOllama(
+        model="qwen3:8b",
+        base_url="http://192.168.10.114:11434",
+        temperature=0,
+    ).bind_tools(tools)
