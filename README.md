@@ -176,26 +176,71 @@ poetry install
 
 All packages (`langchain`, `langgraph`, `langchain-ollama`, `langchain-tavily`, `python-dotenv`) are declared in `pyproject.toml` and installed automatically.
 
-### 3. Configure environment
+### 3. Account & Token Setup
 
-Create `.env` in the project root:
+You need free accounts on three platforms. Follow each section below.
+
+---
+
+#### Tavily — Web Search API
+
+Tavily gives the agent the ability to search the web in real time.
+
+1. Go to **tavily.com** and click **Sign Up** (free)
+2. After login, go to your **Dashboard → API Keys**
+3. Copy the key — it starts with `tvly-`
+
+Free tier: **1,000 searches/month**
+
+---
+
+#### LangSmith — Tracing & Observability
+
+LangSmith lets you see every step of the agent's reasoning in a visual trace — very useful for debugging.
+
+1. Go to **smith.langchain.com** and click **Sign Up** (free)
+2. After login, go to **Settings → API Keys → Create API Key**
+3. Copy the key — it starts with `lsv2_`
+4. Create a project named `personal` (or any name — set it in `.env`)
+
+Free tier: **unlimited traces for personal use**
+
+> Optional but highly recommended during learning — you can see exactly which tools were called, what the LLM received, and what it returned.
+
+---
+
+#### HuggingFace — Free LLM Inference
+
+HuggingFace hosts open-source models and provides a free Serverless Inference API.
+
+1. Go to **huggingface.co** and click **Sign Up** (free, no credit card)
+2. After login, go to **Settings → Access Tokens**
+3. Click **New token** → give it a name (e.g. `react-agent`)
+4. Under permissions, enable **"Make calls to Inference Providers"** ← this is required
+5. Click **Create token** and copy it — it starts with `hf_`
+
+Free tier: **~1,000 requests/day** — sufficient for daily learning (each agent run uses ~3–5 requests)
+
+> If you see a `403 Forbidden` error, your token is missing the "Make calls to Inference Providers" permission. Edit the token and enable it.
+
+---
+
+#### Configure `.env`
+
+Create a `.env` file in the project root with all your keys:
 
 ```env
-TAVILY_API_KEY=your_tavily_api_key_here
+TAVILY_API_KEY=tvly-your-key-here
 
-LANGSMITH_API_KEY=your_langsmith_api_key_here
+LANGSMITH_API_KEY=lsv2_your-key-here
 LANGSMITH_TRACING=true
 LANGSMITH_PROJECT="personal"
 
 # Required only if USE_HUGGINGFACE = True in react.py
-HUGGINGFACEHUB_API_TOKEN=your_hf_token_here
+HUGGINGFACEHUB_API_TOKEN=hf_your-token-here
 ```
 
-| Key | Where to get it |
-|-----|----------------|
-| `TAVILY_API_KEY` | [tavily.com](https://tavily.com) — free tier available |
-| `LANGSMITH_API_KEY` | [smith.langchain.com](https://smith.langchain.com) — free |
-| `HUGGINGFACEHUB_API_TOKEN` | huggingface.co/settings/tokens — free, read access |
+> `.env` is listed in `.gitignore` — your keys will never be committed to git.
 
 ### 4. Choose your LLM backend
 

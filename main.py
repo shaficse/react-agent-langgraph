@@ -109,7 +109,10 @@ app.get_graph().draw_mermaid_png(output_file_path="flow.png")
 # Run the Agent
 # ------------------------------------------------------------
 if __name__ == "__main__":
-    print("Hello ReAct LangGraph with Function Calling")
+    from react import USE_HUGGINGFACE
+    backend = "HuggingFace (Qwen/Qwen2.5-7B-Instruct)" if USE_HUGGINGFACE else "Ollama (qwen3:8b @ 192.168.10.114)"
+    print(f"Hello ReAct LangGraph with Function Calling")
+    print(f"Model: {backend}")
 
     # Wrap the user's question in a HumanMessage and invoke the graph.
     # The graph runs the ReAct loop until should_continue() returns END.
