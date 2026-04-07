@@ -47,15 +47,59 @@ from langgraph.graph import MessagesState
 # It is a dictionary with one key: "messages"
 # The value is a list of messages (the conversation history).
 #
-# What does MessagesState look like?
-# {
-#   "messages": [
-#     HumanMessage(content="What is Tokyo's temperature?"),
-#     AIMessage(content="Let me search for that.", tool_calls=[...]),
-#     ToolMessage(content="Tokyo is 28°C", tool_call_id="abc"),
-#     AIMessage(content="The temperature is 28°C.")
-#   ]
-# }
+# ─────────────────────────────────────────────────────────────
+# FULL STRUCTURE OF MessagesState DURING A COMPLETE AGENT RUN:
+# ─────────────────────────────────────────────────────────────
+#
+# MessagesState
+# └── "messages": list
+#       │
+#       ├── [0] HumanMessage
+#       │         .content      = "What is Tokyo's temp? Triple it."
+#       │         .tool_calls   = (does not exist on HumanMessage)
+#       │
+#       ├── [1] AIMessage                    ← LLM's 1st response
+#       │         .content      = ""         ← empty when calling a tool
+#       │         .tool_calls   = [          ← tool_calls lives HERE, inside AIMessage
+#       │             {
+#       │               "name": "TavilySearch",
+#       │               "args": {"query": "Tokyo temperature"},
+#       │               "id":   "call_abc123"   ← unique ID for this call
+#       │             }
+#       │         ]
+#       │
+#       ├── [2] ToolMessage                  ← result of TavilySearch
+#       │         .content      = "Tokyo is 28°C"
+#       │         .tool_call_id = "call_abc123"  ← matches [1].tool_calls[0]["id"]
+#       │                                         so LLM knows which call this answers
+#       │
+#       ├── [3] AIMessage                    ← LLM's 2nd response
+#       │         .content      = ""
+#       │         .tool_calls   = [
+#       │             {
+#       │               "name": "triple",
+#       │               "args": {"num": 28.0},
+#       │               "id":   "call_def456"
+#       │             }
+#       │         ]
+#       │
+#       ├── [4] ToolMessage                  ← result of triple()
+#       │         .content      = "84.0"
+#       │         .tool_call_id = "call_def456"
+#       │
+#       └── [5] AIMessage                    ← LLM's final answer
+#                 .content      = "Tokyo is 28°C. Tripled: 84°C."
+#                 .tool_calls   = []          ← EMPTY list → agent is done
+#                                             should_continue() sees this
+#                                             and returns END
+#
+# KEY POINTS:
+#   - tool_calls is a FIELD on AIMessage — not a separate object
+#   - tool_calls is a LIST — the LLM can call multiple tools at once
+#   - When tool_calls = [] (empty) → the LLM has its final answer
+#   - ToolMessage.tool_call_id links each result back to its request
+#   - should_continue() in main.py reads state["messages"][-1].tool_calls
+#     to decide: loop again (ACT) or stop (END)
 #
 # LangGraph automatically APPENDS new messages to the list each
 # time a node returns {"messages": [new_message]}.
