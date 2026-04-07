@@ -6,6 +6,33 @@
 
 ---
 
+## Table of Contents
+
+- [Who Is This For?](#who-is-this-for)
+- [What Are We Building?](#what-are-we-building)
+- [Part 1 — The Big Idea: ReAct Pattern](#part-1--the-big-idea-react-pattern)
+- [Part 2 — The Building Blocks](#part-2--the-building-blocks)
+  - [2.1 State (The Shared Notepad)](#21--state-the-shared-notepad)
+  - [2.2 Nodes (The Steps)](#22--nodes-the-steps)
+  - [2.3 Edges (The Connections)](#23--edges-the-connections)
+  - [2.4 Tool Calling (Smart Decision, Dumb Execution)](#24--tool-calling-smart-decision-dumb-execution)
+  - [2.5 The Graph](#25--the-graph)
+- [Part 3 — Project Structure](#part-3--project-structure)
+- [Part 4 — Code Walkthrough](#part-4--code-walkthrough)
+  - [4.1 react.py — LLM + Tools](#41--reactpy--llm--tools)
+  - [4.2 nodes.py — THINK and ACT](#42--nodespy--think-and-act)
+  - [4.3 main.py — Graph Assembly](#43--mainpy--graph-assembly)
+- [Part 5 — Setup Guide](#part-5--setup-guide)
+  - [Step 1 — Install Poetry](#step-1--install-poetry)
+  - [Step 2 — Install Dependencies](#step-2--install-dependencies)
+  - [Step 3 — Create Your Free Accounts](#step-3--create-your-free-accounts)
+  - [Step 4 — Choose Your LLM Backend](#step-4--choose-your-llm-backend)
+- [Part 6 — Run It](#part-6--run-it)
+- [Part 7 — How It All Fits Together](#part-7--how-it-all-fits-together)
+- [Further Reading](#further-reading)
+
+---
+
 ## Who Is This For?
 
 This tutorial is written for absolute beginners. If you have never built an AI agent before, this is your starting point. By the end you will understand:
