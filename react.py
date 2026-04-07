@@ -121,11 +121,18 @@ tavily_tool = TavilySearch(max_results=1)
 
 
 # ------------------------------------------------------------
-# TOOL 2 — Custom Math Tool (triple)
+# TOOL 2 — Custom Conversion Tool (celsius_to_fahrenheit)
 # ------------------------------------------------------------
 # WHAT IS IT?
-# This is a tool we wrote ourselves. It takes a number and
-# multiplies it by 3.
+# This is a tool we wrote ourselves. It converts a temperature
+# from Celsius (°C) to Fahrenheit (°F) — a real-world unit
+# conversion that pairs naturally with a live weather search.
+#
+# WHY IS THIS MORE MEANINGFUL THAN A SIMPLE MULTIPLY?
+# When the agent searches for "current temperature in Tokyo"
+# it gets a value in Celsius (most of the world uses Celsius).
+# A user in the US may need Fahrenheit. This tool bridges that
+# gap — making the agent genuinely useful in a real scenario.
 #
 # WHY @tool?
 # The @tool decorator wraps this plain Python function so that
@@ -141,34 +148,32 @@ tavily_tool = TavilySearch(max_results=1)
 # If your docstring is unclear, the LLM may call the tool
 # incorrectly or not call it at all.
 #
-# TYPE HINTS  (num: float) -> float
+# TYPE HINTS  (celsius: float) -> float
 # These tell Python (and the LLM) what data types are expected:
-#   num: float  → the input must be a decimal number
-#   -> float    → the output will also be a decimal number
+#   celsius: float  → the input must be a decimal number (°C)
+#   -> float        → the output will also be a decimal number (°F)
 #
-# What is a float?
-#   A float is a number with a decimal point.
-#   Examples:  3.0   28.5   -7.2   0.0   100.0
-#   (Contrast with int: 3, 28, -7 — no decimal point)
+# THE FORMULA:  °F = (°C × 9/5) + 32
 #
-# Examples of calling triple():
-#   triple(5.0)   → 15.0      (5   × 3 = 15)
-#   triple(28.0)  → 84.0      (28  × 3 = 84)
-#   triple(0.0)   → 0.0       (0   × 3 = 0)
-#   triple(-3.5)  → -10.5     (-3.5 × 3 = -10.5)
-#   triple(100.0) → 300.0     (100 × 3 = 300)
+# Examples of calling celsius_to_fahrenheit():
+#   celsius_to_fahrenheit(0.0)   → 32.0    (freezing point of water)
+#   celsius_to_fahrenheit(28.0)  → 82.4    (warm Tokyo summer day)
+#   celsius_to_fahrenheit(100.0) → 212.0   (boiling point of water)
+#   celsius_to_fahrenheit(-40.0) → -40.0   (where °C and °F meet)
+#   celsius_to_fahrenheit(37.0)  → 98.6    (human body temperature)
 # ------------------------------------------------------------
 @tool
-def triple(num: float) -> float:
+def celsius_to_fahrenheit(celsius: float) -> float:
     """
-    Multiplies the given number by 3 and returns the result.
+    Converts a temperature from Celsius to Fahrenheit.
 
-    param num: a number to triple
-    returns: the triple of the input number
+    param celsius: temperature in Celsius (°C)
+    returns: temperature in Fahrenheit (°F)
     """
-    return float(num) * 3
-    # float(num) converts num to a float just in case an int is passed.
-    # e.g. float(5) → 5.0  so the return type is always consistent.
+    return (float(celsius) * 9 / 5) + 32
+    # Formula: °F = (°C × 9/5) + 32
+    # float(celsius) ensures consistent float output even if an int is passed.
+    # e.g. celsius_to_fahrenheit(28) → 82.4
 
 
 # ------------------------------------------------------------
@@ -197,7 +202,7 @@ def triple(num: float) -> float:
 # To add more tools later, just add them to this list:
 #   tools = [tavily_tool, triple, my_new_tool]
 # ------------------------------------------------------------
-tools = [tavily_tool, triple]
+tools = [tavily_tool, celsius_to_fahrenheit]
 
 
 # ------------------------------------------------------------

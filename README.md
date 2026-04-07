@@ -50,12 +50,12 @@ The full source code is 3 small files. Let us walk through every line.
 
 We are building an AI agent that can answer this question:
 
-> *"What is the temperature in Tokyo right now? List it and then triple it."*
+> *"What is the current temperature in Tokyo in Celsius? Also convert it to Fahrenheit."*
 
 A plain ChatGPT-style LLM cannot answer this — its knowledge is frozen at training time and it cannot do reliable math. Our agent will:
 
 1. **Search the web** for Tokyo's live temperature using Tavily
-2. **Triple the number** using a custom Python function
+2. **Convert Celsius to Fahrenheit** using a custom Python function
 3. **Combine both results** into a natural language answer
 
 Here is what the final output looks like:
@@ -63,7 +63,7 @@ Here is what the final output looks like:
 ```
 Hello ReAct LangGraph with Function Calling
 Model: HuggingFace (Qwen/Qwen2.5-7B-Instruct)
-The current temperature in Tokyo is 28°C. Tripled, that is 84°C.
+Tokyo is currently 28°C, which is 82.4°F.
 ```
 
 ---
@@ -134,15 +134,15 @@ MessagesState
       │         .content       = "Tokyo is 28°C"
       │         .tool_call_id  = "call_abc"   ← links back to [1]
       │
-      ├── [3] AIMessage          ← LLM says: "Now triple it"
-      │         .tool_calls = [{"name": "triple", "args": {"num": 28.0}, "id": "call_def"}]
+      ├── [3] AIMessage          ← LLM says: "Now convert to Fahrenheit"
+      │         .tool_calls = [{"name": "celsius_to_fahrenheit", "args": {"celsius": 28.0}, "id": "call_def"}]
       │
       ├── [4] ToolMessage        ← math result
-      │         .content       = "84.0"
+      │         .content       = "82.4"
       │         .tool_call_id  = "call_def"
       │
       └── [5] AIMessage          ← LLM writes final answer
-                .content       = "Tokyo is 28°C. Tripled: 84°C."
+                .content       = "Tokyo is 28°C, which is 82.4°F."
                 .tool_calls    = []    ← EMPTY = agent is done
 ```
 
@@ -182,8 +182,8 @@ When the LLM wants to use a tool, it outputs a structured message called a `tool
 
 ```json
 {
-  "name": "triple",
-  "args": { "num": 28.0 },
+  "name": "celsius_to_fahrenheit",
+  "args": { "celsius": 28.0 },
   "id":   "call_abc123"
 }
 ```
@@ -197,19 +197,19 @@ The LLM decides *which* tool to call and *what arguments* to pass. `ToolNode` is
 ```
 ToolNode's internal phone book (built when you pass tools):
   {
-    "TavilySearch": <TavilySearch object>,
-    "triple":       <triple function>
+    "TavilySearch":          <TavilySearch object>,
+    "celsius_to_fahrenheit": <celsius_to_fahrenheit function>
   }
 
-When tool_call arrives with name="triple":
-  → look up "triple" in the dict
-  → call triple(num=28.0)
-  → return 84.0
+When tool_call arrives with name="celsius_to_fahrenheit":
+  → look up "celsius_to_fahrenheit" in the dict
+  → call celsius_to_fahrenheit(celsius=28.0)
+  → return 82.4
 ```
 
 Like a **doctor and pharmacist**: the LLM (doctor) writes the prescription deciding what is needed. `ToolNode` (pharmacist) reads the label and hands over exactly that — no judgment.
 
-> This is why the function name matters. If you rename `triple` to `multiply_by_three`, the `tool_call` name must match exactly.
+> This is why the function name matters. If you rename `celsius_to_fahrenheit` to `convert_temp`, the `tool_call` name must match exactly.
 
 ### 2.5 — The Graph
 
@@ -249,28 +249,28 @@ tavily_tool = TavilySearch(max_results=1)
 # Output: {"results": [{"content": "Tokyo is 28°C", "score": 0.94}]}  (dict)
 ```
 
-**Tool 2 — Triple a number** (custom, written by us):
+**Tool 2 — Celsius to Fahrenheit (°C → °F)** (custom, written by us):
 
 ```python
 from langchain_core.tools import tool
 
 @tool
-def triple(num: float) -> float:
-    """Multiplies the given number by 3 and returns the result."""
-    return float(num) * 3
+def celsius_to_fahrenheit(celsius: float) -> float:
+    """Converts a temperature from Celsius to Fahrenheit."""
+    return (float(celsius) * 9 / 5) + 32
 
-# triple(28.0)  → 84.0
-# triple(5.0)   → 15.0
+# celsius_to_fahrenheit(28.0) → 82.4   (Tokyo warm day)
+# celsius_to_fahrenheit(0.0)  → 32.0   (freezing point)
 ```
 
-The `@tool` decorator registers the function name `"triple"` so `ToolNode` can find it by name later.
+The `@tool` decorator registers the function name `"celsius_to_fahrenheit"` so `ToolNode` can find it by name later.
 
 **The docstring is critical** — the LLM reads it to know when and how to call this tool. Write it clearly.
 
 #### The Tools Registry
 
 ```python
-tools = [tavily_tool, triple]
+tools = [tavily_tool, celsius_to_fahrenheit]
 ```
 
 This list is used in two places:
@@ -393,7 +393,7 @@ The graph looks like this (also saved to [flow.png](flow.png)):
 
 ```python
 res = app.invoke({
-    "messages": [HumanMessage(content="What is the temperature in Tokyo? Triple it.")]
+    "messages": [HumanMessage(content="What is the current temperature in Tokyo in Celsius? Also convert it to Fahrenheit.")]
 })
 print(res["messages"][-1].content)
 ```
@@ -532,7 +532,7 @@ Expected output:
 ```
 Hello ReAct LangGraph with Function Calling
 Model: HuggingFace (Qwen/Qwen2.5-7B-Instruct)
-The current temperature in Tokyo is 28°C. Tripled, that is 84°C.
+Tokyo is currently 28°C, which is 82.4°F.
 ```
 
 ### Try Your Own Question
@@ -545,8 +545,8 @@ HumanMessage(content="Your question here")
 
 Examples to try:
 ```python
-"What is the current Bitcoin price? Triple it."
-"What is the population of Seoul? Triple it."
+"What is the current Bitcoin price in USD? Convert it to JPY using rate 149."
+"What is the weather in London? Convert the temperature to Fahrenheit."
 "What did NASA announce this week?"
 ```
 
@@ -589,14 +589,14 @@ You type a question
   │  LLM reads: all messages including      │
   │             the search result           │
   │  LLM output: AIMessage                  │
-  │    └── .tool_calls = [triple(28.0)]     │ ← not empty → continue
+  │    └── .tool_calls = [celsius_to_fahrenheit(28.0)]     │ ← not empty → continue
   └──────────────────┬──────────────────────┘
                      │
                      ▼
   ┌─────────────────────────────────────────┐
   │  ACT again                              │
-  │  calls triple(num=28.0) → 84.0          │
-  │  returns ToolMessage("84.0")            │
+  │  calls celsius_to_fahrenheit(celsius=28.0) → 82.4          │
+  │  returns ToolMessage("82.4")            │
   └──────────────────┬──────────────────────┘
                      │
                      ▼
@@ -604,7 +604,7 @@ You type a question
   │  THINK again                            │
   │  LLM reads: all messages                │
   │  LLM output: AIMessage                  │
-  │    └── .content    = "28°C. Tripled: 84°C."
+  │    └── .content    = "28°C, which is 82.4°F."
   │    └── .tool_calls = []                 │ ← EMPTY → END
   └──────────────────┬──────────────────────┘
                      │

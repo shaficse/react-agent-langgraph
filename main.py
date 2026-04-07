@@ -251,18 +251,18 @@ if __name__ == "__main__":
     # HumanMessage just adds the "role: user" tag to the text.
     #
     # Example question breakdown:
-    #   "What is the temperature in Tokyo?"  → triggers TavilySearch
-    #   "List it and then triple it"         → triggers triple()
+    #   "What is the current temperature in Tokyo in Celsius?" → triggers TavilySearch
+    #   "Also convert it to Fahrenheit"                        → triggers celsius_to_fahrenheit()
     #
     # The graph will loop:
-    #   1. THINK → LLM calls TavilySearch
-    #   2. ACT   → search runs, returns "28°C"
-    #   3. THINK → LLM calls triple(28)
-    #   4. ACT   → triple runs, returns 84.0
+    #   1. THINK → LLM calls TavilySearch("Tokyo temperature")
+    #   2. ACT   → search runs, returns "Tokyo is 28°C"
+    #   3. THINK → LLM calls celsius_to_fahrenheit(28.0)
+    #   4. ACT   → conversion runs, returns 82.4
     #   5. THINK → LLM writes final answer, no tool_calls → END
     res = app.invoke({
         "messages": [
-            HumanMessage(content="What is the temperature in Tokyo? List it and then triple it")
+            HumanMessage(content="What is the current temperature in Tokyo in Celsius? Also convert it to Fahrenheit.")
         ]
     })
 
@@ -270,12 +270,12 @@ if __name__ == "__main__":
     #
     # res["messages"] is a list of all messages in order:
     #   [0] HumanMessage  — the user's question
-    #   [1] AIMessage     — LLM's first tool call
-    #   [2] ToolMessage   — search result
-    #   [3] AIMessage     — LLM's second tool call
-    #   [4] ToolMessage   — math result
+    #   [1] AIMessage     — LLM calls TavilySearch
+    #   [2] ToolMessage   — search result: "Tokyo is 28°C"
+    #   [3] AIMessage     — LLM calls celsius_to_fahrenheit(28.0)
+    #   [4] ToolMessage   — conversion result: "82.4"
     #   [5] AIMessage     — final answer  ← this is LAST (-1)
     #
     # .content is the text of the message (a str)
-    # Example: "The temperature in Tokyo is 28°C. Tripled: 84°C."
+    # Example: "Tokyo is currently 28°C, which is 82.4°F."
     print(res["messages"][LAST].content)
