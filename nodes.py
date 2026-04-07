@@ -69,6 +69,53 @@ from langgraph.prebuilt import ToolNode
 #   3. Calls the function with the given arguments
 #   4. Wraps the result in a ToolMessage and returns it
 # We do not need to write this logic ourselves.
+#
+# HOW DOES IT FIND THE MATCHING FUNCTION? — Pure name lookup, NO intelligence.
+#
+# When you write @tool above a function, LangGraph registers the
+# function's name as the tool's identifier:
+#
+#   @tool
+#   def triple(num: float) -> float:   ← "triple" becomes the tool name
+#       ...
+#
+# When ToolNode(tools) is created, it builds an internal dictionary
+# (like a phone book / lookup table):
+#
+#   {
+#     "TavilySearch": <TavilySearch object>,
+#     "triple":       <triple function>
+#   }
+#
+# When an AIMessage arrives with a tool_call:
+#   AIMessage(tool_calls=[
+#     {"name": "triple", "args": {"num": 28.0}, "id": "call_abc"}
+#   ])
+#
+# ToolNode does this — simplified:
+#   tool_name = tool_call["name"]           # "triple"
+#   tool_fn   = tool_map[tool_name]         # looks up "triple" in the dict
+#   result    = tool_fn.invoke({"num": 28}) # calls it → 84.0
+#
+# That is it. Zero thinking. Just: read name → find function → call it.
+#
+# ALL the intelligence lives in the LLM (the THINK step).
+# The LLM decides WHICH tool to call and WHAT arguments to pass.
+# ToolNode is just a dumb dispatcher — like a pharmacist who reads
+# the name on the prescription label and hands over the exact medicine.
+# No judgment, no thinking.
+#
+#   LLM (smart)              ToolNode (dumb)
+#   ──────────────────────   ──────────────────────────────────
+#   "I need to triple 28" →  name="triple", args={"num": 28.0}
+#                            → dict lookup: "triple" → triple()
+#                            → triple(num=28.0) → 84.0
+#                            → ToolMessage(content="84.0")
+#
+# IMPORTANT: the name in tool_call MUST exactly match the function name.
+# You can verify any tool's name like this:
+#   print(triple.name)        → "triple"
+#   print(tavily_tool.name)   → "tavily_search"
 
 from react import llm, tools
 # Import the LLM and tools we configured in react.py.
