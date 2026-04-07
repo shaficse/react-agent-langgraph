@@ -24,8 +24,13 @@ load_dotenv()  # read TAVILY_API_KEY, HUGGINGFACEHUB_API_TOKEN, LANGSMITH_* from
 # ------------------------------------------------------------
 # Backend Switch
 # ------------------------------------------------------------
-# Set to True  → use HuggingFace free Serverless Inference API
-# Set to False → use local Ollama server
+# TYPE: bool
+#   True  → HuggingFace free Serverless Inference API
+#   False → local Ollama server
+#
+# Example:
+#   USE_HUGGINGFACE = True   # "Qwen/Qwen2.5-7B-Instruct" via HF API
+#   USE_HUGGINGFACE = False  # qwen3:8b running locally on Ollama
 # ------------------------------------------------------------
 USE_HUGGINGFACE = True
 
@@ -38,6 +43,14 @@ USE_HUGGINGFACE = True
 # context concise — the LLM only sees the top result.
 # The model calls this when it needs live/factual information
 # it wasn't trained on (e.g. today's weather, stock prices).
+#
+# TYPE: TavilySearch (LangChain BaseTool subclass)
+# Input  → str   e.g. "current temperature in Tokyo"
+# Output → dict  e.g. {
+#   "query": "current temperature in Tokyo",
+#   "results": [{"url": "...", "content": "Tokyo is 28°C...", "score": 0.94}],
+#   "response_time": 0.72
+# }
 # ------------------------------------------------------------
 tavily_tool = TavilySearch(max_results=1)
 
@@ -49,6 +62,13 @@ tavily_tool = TavilySearch(max_results=1)
 # LangChain-compatible tool. The docstring is critical: the LLM
 # reads it to decide WHEN and HOW to call this function.
 # Always write clear, descriptive docstrings for your tools.
+#
+# TYPE: float → float
+# Examples:
+#   triple(5.0)   → 15.0
+#   triple(28.0)  → 84.0
+#   triple(0.0)   → 0.0
+#   triple(-3.5)  → -10.5
 # ------------------------------------------------------------
 @tool
 def triple(num: float) -> float:
@@ -64,9 +84,16 @@ def triple(num: float) -> float:
 # ------------------------------------------------------------
 # Tools Registry
 # ------------------------------------------------------------
+# TYPE: list[BaseTool]
 # All tools available to the agent are listed here.
 # This list is passed to both the LLM (so it knows what exists)
 # and the ToolNode (so it can actually execute them).
+#
+# Example:
+#   tools = [tavily_tool, triple]
+#   # → LLM sees two tools:
+#   #     "TavilySearch" for web queries
+#   #     "triple"       for math
 # ------------------------------------------------------------
 tools = [tavily_tool, triple]
 
@@ -84,14 +111,23 @@ if USE_HUGGINGFACE:
     #
     # Requirements:
     #   - Free account at huggingface.co
-    #   - Token at huggingface.co/settings/tokens (read access)
+    #   - Token at huggingface.co/settings/tokens
+    #     (enable "Make calls to Inference Providers" permission)
     #   - HUGGINGFACEHUB_API_TOKEN set in .env
     #
     # Model choice — must support tool/function calling:
-    #   "Qwen/Qwen2.5-7B-Instruct"         ← recommended (same family as local qwen3)
+    #   "Qwen/Qwen2.5-7B-Instruct"          ← recommended (same family as local qwen3)
     #   "mistralai/Mistral-7B-Instruct-v0.3" ← alternative
     #
-    # Note: Free tier has rate limits (~requests per minute).
+    # TYPE: HuggingFaceEndpoint
+    #   repo_id        str   → HuggingFace model ID
+    #   task           str   → inference task type, e.g. "text-generation"
+    #   max_new_tokens int   → max tokens the model may generate
+    #                          e.g. 512 = short reply, 2048 = long reply
+    #   temperature    float → 0.0 = deterministic, 1.0 = creative
+    #                          HF API rejects exactly 0, so we use 0.01
+    #
+    # Note: Free tier has rate limits (~1000 req/day).
     # For heavier use, upgrade to HF Pro or run locally via Ollama.
     # ----------------------------------------------------------
     from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
@@ -112,6 +148,14 @@ else:
     # or LAN. No data leaves your network. Ideal for privacy or
     # offline development. Requires Ollama to be running and the
     # model to be pulled beforehand.
+    #
+    # TYPE: ChatOllama
+    #   model       str   → model name as shown in `ollama list`
+    #                        e.g. "qwen3:8b", "llama3:latest"
+    #   base_url    str   → Ollama server address
+    #                        e.g. "http://localhost:11434"
+    #                             "http://192.168.10.114:11434"  ← LAN server
+    #   temperature float → 0 = deterministic output (best for agents)
     #
     # Requirements:
     #   - Ollama server running at base_url

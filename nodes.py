@@ -25,9 +25,18 @@ load_dotenv()
 # ------------------------------------------------------------
 # System Prompt
 # ------------------------------------------------------------
+# TYPE: str
 # The system message sets the agent's persona and behaviour.
 # It is prepended to every LLM call so the model always has
 # context about its role, regardless of which turn it is on.
+#
+# Example of what the full message list looks like each call:
+#   [
+#     {"role": "system",    "content": "You are a helpful assistant..."},
+#     {"role": "user",      "content": "What is the temperature in Tokyo?"},
+#     {"role": "assistant", "content": None, "tool_calls": [{"name": "TavilySearch", ...}]},
+#     {"role": "tool",      "content": "Tokyo is currently 28°C"},
+#   ]
 # ------------------------------------------------------------
 SYSTEM_MESSAGE = """
 You are a helpful assistant that can use tools to answer questions.
@@ -41,6 +50,34 @@ You are a helpful assistant that can use tools to answer questions.
 # at the conversation history and decides what to do next:
 #   a) Call a tool  → output contains tool_calls
 #   b) Give a final answer → output is plain text
+#
+# TYPE: MessagesState → MessagesState
+#
+# Input state example:
+#   {
+#     "messages": [
+#       HumanMessage(content="What is the temperature in Tokyo?")
+#     ]
+#   }
+#
+# Output when LLM decides to call a tool:
+#   {
+#     "messages": [
+#       AIMessage(
+#         content="",
+#         tool_calls=[{"name": "TavilySearch",
+#                      "args": {"query": "current temperature Tokyo"},
+#                      "id": "call_abc123"}]
+#       )
+#     ]
+#   }
+#
+# Output when LLM gives a final answer (no tool needed):
+#   {
+#     "messages": [
+#       AIMessage(content="The temperature in Tokyo is 28°C. Tripled, that is 84°C.")
+#     ]
+#   }
 #
 # MessagesState is a TypedDict with one key: "messages".
 # LangGraph automatically appends returned messages to the list,
@@ -67,6 +104,27 @@ def run_agent_reasoning(state: MessagesState) -> MessagesState:
 # matching Python function(s), and returns ToolMessage(s)
 # containing the results. These results are appended to the
 # state and fed back to the LLM in the next reasoning step.
+#
+# TYPE: MessagesState → MessagesState
+#
+# Input — last message must be an AIMessage with tool_calls:
+#   {
+#     "messages": [
+#       ...,
+#       AIMessage(tool_calls=[
+#         {"name": "TavilySearch", "args": {"query": "Tokyo temperature"}, "id": "call_abc123"},
+#         {"name": "triple",       "args": {"num": 28.0},                  "id": "call_def456"}
+#       ])
+#     ]
+#   }
+#
+# Output — one ToolMessage per tool call:
+#   {
+#     "messages": [
+#       ToolMessage(content="Tokyo is 28°C",  tool_call_id="call_abc123"),
+#       ToolMessage(content="84.0",           tool_call_id="call_def456")
+#     ]
+#   }
 #
 # ToolNode handles multiple parallel tool calls automatically.
 # ------------------------------------------------------------
